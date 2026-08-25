@@ -4,70 +4,282 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ase</title>
-  <script src="https://unpkg.com/brain.js"></script>
+  <style>
+    :root {
+      --bg-color: #121212;
+      --chat-bg: #1e1e1e;
+      --primary-color: #3b82f6;
+      --primary-hover: #2563eb;
+      --text-color: #e5e7eb;
+      --text-muted: #9ca3af;
+      --user-msg-bg: #2563eb;
+      --ase-msg-bg: #2d2d2d;
+      --font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-family);
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+    }
+
+    #app {
+      width: 100%;
+      max-width: 800px;
+      height: 90vh;
+      background-color: var(--chat-bg);
+      border-radius: 12px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    header {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid #333;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    header h1 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      letter-spacing: 1px;
+    }
+
+    header h1 span {
+      color: var(--primary-color);
+    }
+
+    .status {
+      display: flex;
+      align-items: center;
+      font-size: 0.8rem;
+      color: #10b981;
+    }
+
+    .status-dot {
+      height: 8px;
+      width: 8px;
+      background-color: #10b981;
+      border-radius: 50%;
+      margin-right: 6px;
+      display: inline-block;
+    }
+
+    #chat-log {
+      flex: 1;
+      padding: 1.5rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      scroll-behavior: smooth;
+    }
+
+    #chat-log::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    #chat-log::-webkit-scrollbar-thumb {
+      background-color: #333;
+      border-radius: 3px;
+    }
+
+    .message {
+      max-width: 80%;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      line-height: 1.4;
+      position: relative;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .message.user {
+      align-self: flex-end;
+      background-color: var(--user-msg-bg);
+      color: white;
+      border-bottom-right-radius: 2px;
+    }
+
+    .message.ase {
+      align-self: flex-start;
+      background-color: var(--ase-msg-bg);
+      border-bottom-left-radius: 2px;
+    }
+
+    .message-meta {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-bottom: 0.25rem;
+      display: block;
+    }
+
+    .message.user .message-meta {
+      color: rgba(255,255,255,0.7);
+      text-align: right;
+    }
+
+    #input-area {
+      padding: 1rem 1.5rem;
+      border-top: 1px solid #333;
+      display: flex;
+      gap: 1rem;
+      background-color: #1a1a1a;
+    }
+
+    #user-input {
+      flex: 1;
+      padding: 0.75rem 1rem;
+      background-color: #2d2d2d;
+      border: 1px solid #444;
+      border-radius: 8px;
+      color: var(--text-color);
+      font-size: 0.95rem;
+      transition: border-color 0.2s;
+    }
+
+    #user-input:focus {
+      outline: none;
+      border-color: var(--primary-color);
+    }
+
+    #send-btn {
+      padding: 0.75rem 1.5rem;
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    #send-btn:hover {
+      background-color: var(--primary-hover);
+    }
+
+    #send-btn:active {
+      transform: translateY(1px);
+    }
+  </style>
 </head>
 <body>
 
   <div id="app">
-    <h1>Ase</h1>
-    <div id="chat-log"></div>
-    <div>
-      <input type="text" id="user-input" placeholder="Type a message...">
+    <header>
+      <h1>Ase::<span>Engine</span></h1>
+      <div class="status">
+        <span class="status-dot"></span>
+        System Online
+      </div>
+    </header>
+
+    <div id="chat-log">
+      <div class="message ase">
+        <span class="message-meta">Ase Core v1.0</span>
+        Welcome. I am Ase, your Advanced System Engine. My core modules are initialized and ready. How may I assist you with your queries today?
+      </div>
+    </div>
+
+    <div id="input-area">
+      <input type="text" id="user-input" placeholder="Enter your command or query..." autofocus>
       <button id="send-btn">Send</button>
     </div>
   </div>
 
   <script>
-    const net = new brain.NeuralNetwork();
-
-    net.train([
-      { input: "hello", output: { greeting: 1 } },
-      { input: "hi", output: { greeting: 1 } },
-      { input: "bye", output: { farewell: 1 } },
-      { input: "goodbye", output: { farewell: 1 } }
-    ]);
-
-    const responses = {
-      greeting: "Hello! How can I help you today?",
-      farewell: "Goodbye! Have a great day!"
-    };
-
     const chatLog = document.getElementById("chat-log");
     const userInput = document.getElementById("user-input");
     const sendBtn = document.getElementById("send-btn");
 
+    const knowledgeBase = {
+      "hello": "Greetings. System status is nominal. How can I help?",
+      "hi": "Hello. Ase Engine is ready. What do you need?",
+      "hey": "Ase is online. Please state your query.",
+      "who are you": "I am Ase, the Advanced System Engine (v1.0.0). I run entirely within your modern browser environment.",
+      "what are you": "I am a client-side digital assistant built on standard web technologies.",
+      "name": "My designation is Ase.",
+      "what can you do": "Currently, I can process simple text commands and queries. I am designed as a foundation for more complex client-side tasks.",
+      "help": "I accept commands. Try asking 'who are you', 'capabilities', or simply greet me.",
+      "bye": "System standing down. Have a productive day.",
+      "goodbye": "Ase core going idle. Farewell.",
+      "exit": "Terminating session. Goodbye."
+    };
+
     function appendMessage(sender, text) {
-      const msg = document.createElement("div");
-      msg.innerText = `${sender}: ${text}`;
-      chatLog.appendChild(msg);
+      const msgDiv = document.createElement("div");
+      msgDiv.className = `message ${sender.toLowerCase()}`;
+
+      const metaSpan = document.createElement("span");
+      metaSpan.className = "message-meta";
+      metaSpan.innerText = sender === "User" ? "Authorized User" : "Ase Engine";
+      
+      const textNode = document.createTextNode(text);
+
+      msgDiv.appendChild(metaSpan);
+      msgDiv.appendChild(textNode);
+      
+      chatLog.appendChild(msgDiv);
+      chatLog.scrollTop = chatLog.scrollHeight;
     }
 
-    function sendMessage() {
-      const text = userInput.value.trim().toLowerCase();
+    function processAIResponse(rawInput) {
+      const text = rawInput.trim().toLowerCase();
+      
       if (!text) return;
 
-      appendMessage("User", userInput.value);
+      appendMessage("User", rawInput);
       userInput.value = "";
 
-      const result = net.run(text);
-      let highestMatch = "greeting";
-      let highestScore = 0;
+      let response = "Error: Input not recognized by core modules. Type 'help' for available commands.";
 
-      for (let key in result) {
-        if (result[key] > highestScore) {
-          highestScore = result[key];
-          highestMatch = key;
+      for (let key in knowledgeBase) {
+        if (text.includes(key)) {
+          response = knowledgeBase[key];
+          break;
         }
       }
 
-      const reply = highestScore > 0.5 ? responses[highestMatch] : "I do not understand.";
-      setTimeout(() => appendMessage("Ase", reply), 300);
+      setTimeout(() => {
+        appendMessage("Ase", response);
+      }, 450);
+    }
+
+    function sendMessage() {
+      processAIResponse(userInput.value);
     }
 
     sendBtn.addEventListener("click", sendMessage);
+    
     userInput.addEventListener("keypress", (e) => {
-      if (e.key === "Enter") sendMessage();
+      if (e.key === "Enter") {
+        sendMessage();
+      }
     });
+
+    window.onload = () => {
+      userInput.focus();
+    };
   </script>
 
 </body>
