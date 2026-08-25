@@ -466,6 +466,7 @@
       <div class="stat-line"><span>Exchanges</span><span id="stat-exchanges">0</span></div>
       <div class="stat-line"><span>Known identity</span><span id="stat-identity">unset</span></div>
       <div class="stat-line"><span>Last intent</span><span id="stat-intent">none</span></div>
+      <div class="stat-line"><span>Detected code lang</span><span id="stat-codelang">none</span></div>
     </div>
   </aside>
 
@@ -493,7 +494,7 @@
       <button class="lang-chip" data-lang="javascript">JavaScript</button>
     </div>
 
-    <div class="ai-note">Code generation and fixes are handled by Claude Sonnet · local engine handles small talk</div>
+    <div class="ai-note">Claude Sonnet handles real code generation and fixes in any language · local engine handles quick chat and session memory</div>
 
     <div id="input-area">
       <input type="text" id="user-input" placeholder="Ask a question, paste code to fix, or request a script..." autofocus>
@@ -515,6 +516,7 @@
   var statExchanges = document.getElementById('stat-exchanges');
   var statIdentity = document.getElementById('stat-identity');
   var statIntent = document.getElementById('stat-intent');
+  var statCodeLang = document.getElementById('stat-codelang');
   var uptimeClock = document.getElementById('uptime-clock');
   var aiDot = document.getElementById('ai-dot');
   var langChips = document.querySelectorAll('.lang-chip');
@@ -544,7 +546,7 @@
   var intents = [
     {
       name: 'greeting',
-      keywords: ['hello', 'hi', 'hey', 'yo', 'sup', 'greetings'],
+      keywords: ['hello', 'hi', 'hey', 'yo', 'sup', 'greetings', 'oi', 'ola', 'olá', 'bom dia', 'boa tarde', 'boa noite', 'e ai', 'e aí'],
       responses: [
         'Hey! Ase is online and ready.',
         'Hello there. What can I help with?',
@@ -553,7 +555,7 @@
     },
     {
       name: 'farewell',
-      keywords: ['bye', 'goodbye', 'see you', 'exit', 'quit', 'later'],
+      keywords: ['bye', 'goodbye', 'see you', 'exit', 'quit', 'later', 'tchau', 'ate mais', 'até mais', 'falou', 'valeu ate', 'sair'],
       responses: [
         'Session paused. Talk soon.',
         'Going idle. Come back anytime.',
@@ -562,62 +564,62 @@
     },
     {
       name: 'identity',
-      keywords: ['who are you', 'what are you', 'your name'],
+      keywords: ['who are you', 'what are you', 'your name', 'quem e voce', 'quem é você', 'o que voce e', 'o que você é', 'qual seu nome'],
       responses: [
-        'I am Ase, a lightweight local engine that runs entirely in your browser.',
-        'Ase here — a self-contained assistant with no server, no external calls.'
+        'I am Ase, a coding assistant that runs in your browser and generates or fixes code in pretty much any language, with deep focus on Friday Night Funkin modding.',
+        'Ase here — I write and fix code, explain concepts, and specialize in FNF engines, but I am not limited to that.'
       ]
     },
     {
       name: 'capabilities',
-      keywords: ['what can you do', 'capabilities', 'features', 'help'],
+      keywords: ['what can you do', 'capabilities', 'features', 'help', 'o que voce faz', 'o que você faz', 'como voce funciona', 'ajuda'],
       responses: [
-        'I can chat, remember your name for this session, and respond to a growing set of intents. Try asking who I am, what I am, or tell me your name.'
+        'I can chat, remember your name for this session, generate or fix code in any programming language, and I specialize in FNF (Haxe, HaxeFlixel, HScript, Lua/Polymod). Just describe what you need, or paste code to fix.'
       ]
     },
     {
       name: 'creator',
-      keywords: ['who made you', 'who built you', 'your creator', 'who created you'],
+      keywords: ['who made you', 'who built you', 'your creator', 'who created you', 'quem te fez', 'quem criou voce', 'quem criou você'],
       responses: [
         'I was built as an open, editable project — check the repository source to see how I work.'
       ]
     },
     {
       name: 'set-name',
-      keywords: ['my name is', 'call me', 'i am called'],
+      keywords: ['my name is', 'call me', 'i am called', 'meu nome e', 'meu nome é', 'pode me chamar de', 'me chame de'],
       handler: function (raw) {
-        var match = raw.match(/(?:my name is|call me|i am called)\s+([a-zA-Zà-ú]+)/i);
+        var match = raw.match(/(?:my name is|call me|i am called|meu nome (?:e|é)|pode me chamar de|me chame de)\s+([a-zA-Zà-úÀ-Ú]+)/i);
         if (match) {
           context.userName = match[1];
           return 'Got it, ' + context.userName + '. I will remember that for this session.';
         }
-        return 'I did not catch a name in that. Try: "my name is Alex".';
+        return 'I did not catch a name in that. Try: "my name is Alex" or "meu nome é Alex".';
       }
     },
     {
       name: 'recall-name',
-      keywords: ['what is my name', 'do you know my name', 'who am i'],
+      keywords: ['what is my name', 'do you know my name', 'who am i', 'qual e meu nome', 'qual é meu nome', 'voce sabe meu nome', 'você sabe meu nome', 'quem sou eu'],
       handler: function () {
         if (context.userName) return 'You are ' + context.userName + ', unless you told me otherwise.';
-        return 'I do not have a name on file yet. Tell me with "my name is ...".';
+        return 'I do not have a name on file yet. Tell me with "my name is ..." or "meu nome é ...".';
       }
     },
     {
       name: 'thanks',
-      keywords: ['thanks', 'thank you', 'appreciate it'],
+      keywords: ['thanks', 'thank you', 'appreciate it', 'obrigado', 'obrigada', 'valeu'],
       responses: ['Anytime.', 'Happy to help.', 'No problem at all.']
     },
     {
       name: 'status',
-      keywords: ['how are you', 'you good', 'status report'],
+      keywords: ['how are you', 'you good', 'status report', 'tudo bem', 'como voce esta', 'como você está', 'beleza'],
       responses: [
-        'All modules nominal, running client-side with zero network calls.',
+        'All modules nominal, AI uplink ready when you need real code work.',
         'Status green across the board.'
       ]
     },
     {
       name: 'time',
-      keywords: ['what time', 'current time', 'what is the time'],
+      keywords: ['what time', 'current time', 'what is the time', 'que horas sao', 'que horas são', 'horas'],
       handler: function () {
         var now = new Date();
         return 'Local browser time is ' + now.toLocaleTimeString() + '.';
@@ -625,7 +627,7 @@
     },
     {
       name: 'joke',
-      keywords: ['joke', 'make me laugh', 'something funny'],
+      keywords: ['joke', 'make me laugh', 'something funny', 'piada', 'conta uma piada', 'me faz rir'],
       responses: [
         'I tried to debug my own code once. Turns out I was the bug.',
         'Why do programmers prefer dark mode? Because light attracts bugs.'
@@ -633,7 +635,7 @@
     },
     {
       name: 'compliment',
-      keywords: ['good bot', 'nice job', 'well done', 'youre smart'],
+      keywords: ['good bot', 'nice job', 'well done', 'youre smart', 'muito bom', 'mandou bem', 'top demais'],
       responses: ['Appreciated. I will keep improving my responses.']
     }
   ];
@@ -678,19 +680,21 @@
 
   function needsRealAI(raw, localResult) {
     if (detectsCode(raw)) return true;
-    if (!localResult.intent || localResult.confidence < 0.5) return true;
-    if (/\b(código|codigo|code|script|função|funcao|function|bug|erro|error|fix|corrig|gerar|generate|engine|mod\b|haxe|hscript|polymod|hxc)\b/i.test(raw)) return true;
+    if (!localResult.intent) return true;
+    if (localResult.confidence < 0.6) return true;
+    if (raw.length > 55) return true;
     return false;
   }
 
   function buildSystemPrompt() {
     var langHint = languageLabels[context.language] || languageLabels.auto;
     var namePart = context.userName ? ('The user\'s name is ' + context.userName + '.') : '';
-    return 'You are Ase, a coding assistant embedded in a small web app, specialized in Friday Night Funkin modding and ports across Haxe, HaxeFlixel, OpenFL, Lime, HScript, Lua/Polymod, C++, Python, and JavaScript. ' +
-      'When asked to generate or fix code, produce complete, correct, working code in fenced code blocks tagged with the language. ' +
-      'Do not include comments in code unless the user explicitly asks for them. Do not use trace() calls for debugging. Keep explanations outside code blocks concise. ' +
-      'Current requested language/engine context: ' + langHint + '. ' +
-      'Reply in the same language the user writes in. ' + namePart;
+    return 'You are Ase, a highly capable coding assistant embedded in a web app. You write, fix, refactor, and explain code fluently in any programming language the user needs: Haxe, HScript, Lua, Python, JavaScript, TypeScript, C++, C#, Java, Kotlin, Swift, Rust, Go, PHP, Ruby, SQL, shell, and anything else asked for. ' +
+      'You have particular depth in Friday Night Funkin modding and ports: HaxeFlixel, OpenFL, Lime, Polymod, and engines like Psych Engine, Kade Engine, Codename Engine, V-Slice and the base game — apply that expertise automatically whenever the context looks FNF-related, without needing to be told explicitly. ' +
+      'Read the user\'s intent carefully, including implied context from earlier turns in this conversation. If a request is genuinely ambiguous in a way that would change the code you write, ask one short clarifying question instead of guessing; otherwise make a reasonable assumption and proceed. ' +
+      'When producing code, output complete, correct, runnable code in a fenced block tagged with the specific language, chosen automatically based on the request or the target engine. Do not include comments in code unless explicitly asked. Never use trace() calls for debugging. Keep any explanation outside the code block short and to the point. ' +
+      'Current requested language/engine hint from the UI: ' + langHint + ', but override it if the user clearly asks for something else. ' +
+      'Always reply in the same language the user is writing in. ' + namePart;
   }
 
   function callRealAI(raw) {
@@ -850,6 +854,8 @@
     confidenceFill.style.width = pct + '%';
     if (source === 'ai') {
       confidenceValue.innerText = 'AI Core (Claude Sonnet) — ' + reply.name;
+      var langMatch = reply.text.match(/```(\w+)/);
+      if (langMatch) statCodeLang.innerText = langMatch[1];
     } else {
       confidenceValue.innerText = pct + '% match — Local Engine — ' + reply.name;
     }
