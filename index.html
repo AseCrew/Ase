@@ -117,6 +117,7 @@
   .module-row:nth-child(2) .module-dot { animation-delay: 0.3s; background: var(--accent-2); }
   .module-row:nth-child(3) .module-dot { animation-delay: 0.6s; }
   .module-row:nth-child(4) .module-dot { animation-delay: 0.9s; background: var(--accent-2); }
+  .module-dot.error { background: var(--warn); animation: none; opacity: 1; }
 
   @keyframes pulse {
     0%, 100% { opacity: 0.4; box-shadow: 0 0 0 0 rgba(87,224,184,0.4); }
@@ -337,6 +338,88 @@
     cursor: pointer;
   }
 
+  #lang-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0 1.6rem 0.9rem;
+  }
+
+  .lang-chip {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.03em;
+    color: var(--text-muted);
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 999px;
+    padding: 0.32rem 0.75rem;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+  }
+
+  .lang-chip.active {
+    color: #06110d;
+    background: var(--accent);
+    border-color: var(--accent);
+    font-weight: 600;
+  }
+
+  .bubble pre {
+    background: #06090b;
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 0.8rem 0.9rem;
+    margin: 0.5rem 0;
+    overflow-x: auto;
+    position: relative;
+  }
+
+  .bubble code {
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    color: #b8f5e0;
+    white-space: pre;
+  }
+
+  .code-block-wrap { position: relative; }
+
+  .copy-btn {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    background: var(--bg-alt);
+    border: 1px solid var(--panel-border);
+    border-radius: 5px;
+    padding: 0.2rem 0.5rem;
+    cursor: pointer;
+  }
+
+  .copy-btn:hover { color: var(--text); }
+
+  .code-lang-tag {
+    position: absolute;
+    top: 0.5rem;
+    left: 0.9rem;
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .bubble pre { padding-top: 1.9rem; }
+
+  .ai-note {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    color: var(--text-dim);
+    padding: 0 1.6rem 0.6rem;
+  }
+
   @media (max-width: 760px) {
     #core-panel {
       position: fixed;
@@ -369,11 +452,11 @@
       <div class="module-row"><span class="module-dot"></span>Language Core</div>
       <div class="module-row"><span class="module-dot"></span>Memory Module</div>
       <div class="module-row"><span class="module-dot"></span>Intent Engine</div>
-      <div class="module-row"><span class="module-dot"></span>Response Synth</div>
+      <div class="module-row"><span class="module-dot" id="ai-dot"></span>AI Uplink</div>
     </div>
 
     <div class="core-block">
-      <div class="core-label">Last Response Confidence</div>
+      <div class="core-label">Response Source</div>
       <div class="meter-track"><div class="meter-fill" id="confidence-fill"></div></div>
       <div class="meter-value" id="confidence-value">Awaiting input</div>
     </div>
@@ -400,8 +483,20 @@
 
     <div id="chat-log"></div>
 
+    <div id="lang-row">
+      <button class="lang-chip active" data-lang="auto">Auto-detect</button>
+      <button class="lang-chip" data-lang="haxe">Haxe / HaxeFlixel</button>
+      <button class="lang-chip" data-lang="hscript">HScript</button>
+      <button class="lang-chip" data-lang="lua">Lua / Polymod</button>
+      <button class="lang-chip" data-lang="cpp">C++</button>
+      <button class="lang-chip" data-lang="python">Python</button>
+      <button class="lang-chip" data-lang="javascript">JavaScript</button>
+    </div>
+
+    <div class="ai-note">Code generation and fixes are handled by Claude Sonnet · local engine handles small talk</div>
+
     <div id="input-area">
-      <input type="text" id="user-input" placeholder="Type a command or question..." autofocus>
+      <input type="text" id="user-input" placeholder="Ask a question, paste code to fix, or request a script..." autofocus>
       <button id="send-btn">Send</button>
     </div>
   </main>
@@ -421,9 +516,30 @@
   var statIdentity = document.getElementById('stat-identity');
   var statIntent = document.getElementById('stat-intent');
   var uptimeClock = document.getElementById('uptime-clock');
+  var aiDot = document.getElementById('ai-dot');
+  var langChips = document.querySelectorAll('.lang-chip');
 
   var startTime = Date.now();
-  var context = { userName: null, lastIntent: null, exchanges: 0 };
+  var context = { userName: null, lastIntent: null, exchanges: 0, language: 'auto' };
+  var aiHistory = [];
+
+  var languageLabels = {
+    auto: 'auto-detect from the request',
+    haxe: 'Haxe, targeting HaxeFlixel/OpenFL/Lime for Friday Night Funkin engines',
+    hscript: 'HScript as used in Psych Engine and similar FNF forks',
+    lua: 'Lua with the Polymod scripting API used by FNF Legacy-style engines',
+    cpp: 'C++',
+    python: 'Python',
+    javascript: 'JavaScript'
+  };
+
+  langChips.forEach(function (chip) {
+    chip.addEventListener('click', function () {
+      langChips.forEach(function (c) { c.classList.remove('active'); });
+      chip.classList.add('active');
+      context.language = chip.getAttribute('data-lang');
+    });
+  });
 
   var intents = [
     {
@@ -551,6 +667,60 @@
     return { intent: best, confidence: confidence };
   }
 
+  function detectsCode(raw) {
+    if (raw.indexOf('```') !== -1) return true;
+    var patterns = [/function\s+\w*\s*\(/, /class\s+\w+/, /\bvar\s+\w+\s*[:=]/, /\bpublic\s+/, /\bprivate\s+/, /import\s+\w+/, /package\s+\w+/, /#include/, /def\s+\w+\(/, /\bstatic\s+function/];
+    for (var i = 0; i < patterns.length; i++) {
+      if (patterns[i].test(raw)) return true;
+    }
+    return false;
+  }
+
+  function needsRealAI(raw, localResult) {
+    if (detectsCode(raw)) return true;
+    if (!localResult.intent || localResult.confidence < 0.5) return true;
+    if (/\b(código|codigo|code|script|função|funcao|function|bug|erro|error|fix|corrig|gerar|generate|engine|mod\b|haxe|hscript|polymod|hxc)\b/i.test(raw)) return true;
+    return false;
+  }
+
+  function buildSystemPrompt() {
+    var langHint = languageLabels[context.language] || languageLabels.auto;
+    var namePart = context.userName ? ('The user\'s name is ' + context.userName + '.') : '';
+    return 'You are Ase, a coding assistant embedded in a small web app, specialized in Friday Night Funkin modding and ports across Haxe, HaxeFlixel, OpenFL, Lime, HScript, Lua/Polymod, C++, Python, and JavaScript. ' +
+      'When asked to generate or fix code, produce complete, correct, working code in fenced code blocks tagged with the language. ' +
+      'Do not include comments in code unless the user explicitly asks for them. Do not use trace() calls for debugging. Keep explanations outside code blocks concise. ' +
+      'Current requested language/engine context: ' + langHint + '. ' +
+      'Reply in the same language the user writes in. ' + namePart;
+  }
+
+  function callRealAI(raw) {
+    aiHistory.push({ role: 'user', content: raw });
+    if (aiHistory.length > 16) aiHistory = aiHistory.slice(aiHistory.length - 16);
+
+    return fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1000,
+        system: buildSystemPrompt(),
+        messages: aiHistory
+      })
+    }).then(function (response) {
+      return response.json();
+    }).then(function (data) {
+      var textBlocks = (data.content || []).filter(function (block) { return block.type === 'text'; });
+      var text = textBlocks.map(function (block) { return block.text; }).join('\n');
+      if (!text) text = 'The AI core returned an empty response. Try rephrasing the request.';
+      aiHistory.push({ role: 'assistant', content: text });
+      aiDot.classList.remove('error');
+      return { text: text, confidence: 1, name: 'ai-core' };
+    }).catch(function () {
+      aiDot.classList.add('error');
+      return { text: 'Could not reach the AI core from this environment. Falling back to the local engine for now.', confidence: 0.2, name: 'ai-error' };
+    });
+  }
+
   function buildReply(raw) {
     var result = matchIntent(raw);
     if (!result.intent) {
@@ -578,6 +748,67 @@
     return hh + ':' + mm;
   }
 
+  function renderIntoBubble(bubble, text) {
+    var pattern = /```(\w+)?\n?([\s\S]*?)```/g;
+    var lastIndex = 0;
+    var match;
+    var found = false;
+
+    while ((match = pattern.exec(text)) !== null) {
+      found = true;
+      var before = text.slice(lastIndex, match.index);
+      if (before.trim()) {
+        var p = document.createElement('div');
+        p.innerText = before.trim();
+        bubble.appendChild(p);
+      }
+
+      var lang = match[1] || 'code';
+      var codeText = match[2].replace(/\n$/, '');
+
+      var wrap = document.createElement('div');
+      wrap.className = 'code-block-wrap';
+
+      var tag = document.createElement('span');
+      tag.className = 'code-lang-tag';
+      tag.innerText = lang;
+
+      var copyBtn = document.createElement('button');
+      copyBtn.className = 'copy-btn';
+      copyBtn.innerText = 'Copy';
+      copyBtn.addEventListener('click', function (codeToCopy, btn) {
+        return function () {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(codeToCopy).then(function () {
+              btn.innerText = 'Copied';
+              setTimeout(function () { btn.innerText = 'Copy'; }, 1200);
+            });
+          }
+        };
+      }(codeText, copyBtn));
+
+      var pre = document.createElement('pre');
+      var code = document.createElement('code');
+      code.innerText = codeText;
+      pre.appendChild(tag);
+      pre.appendChild(copyBtn);
+      pre.appendChild(code);
+      wrap.appendChild(pre);
+      bubble.appendChild(wrap);
+
+      lastIndex = pattern.lastIndex;
+    }
+
+    var rest = text.slice(lastIndex);
+    if (!found) {
+      bubble.innerText = text;
+    } else if (rest.trim()) {
+      var tail = document.createElement('div');
+      tail.innerText = rest.trim();
+      bubble.appendChild(tail);
+    }
+  }
+
   function appendMessage(sender, text) {
     var row = document.createElement('div');
     row.className = 'row ' + sender;
@@ -588,7 +819,7 @@
 
     var bubble = document.createElement('div');
     bubble.className = 'bubble';
-    bubble.innerText = text;
+    renderIntoBubble(bubble, text);
 
     row.appendChild(meta);
     row.appendChild(bubble);
@@ -609,7 +840,7 @@
     return row;
   }
 
-  function updateDiagnostics(reply) {
+  function updateDiagnostics(reply, source) {
     context.exchanges += 1;
     context.lastIntent = reply.name;
     statExchanges.innerText = context.exchanges;
@@ -617,7 +848,11 @@
     statIntent.innerText = reply.name;
     var pct = Math.round(reply.confidence * 100);
     confidenceFill.style.width = pct + '%';
-    confidenceValue.innerText = pct + '% match — ' + reply.name;
+    if (source === 'ai') {
+      confidenceValue.innerText = 'AI Core (Claude Sonnet) — ' + reply.name;
+    } else {
+      confidenceValue.innerText = pct + '% match — Local Engine — ' + reply.name;
+    }
   }
 
   function handleSend() {
@@ -627,15 +862,27 @@
     appendMessage('user', raw);
     userInput.value = '';
 
+    var localResult = buildReply(raw);
+    var useAI = needsRealAI(raw, matchIntent(raw));
     var typingRow = showTyping();
-    var delay = 400 + Math.random() * 500;
 
-    setTimeout(function () {
-      chatLog.removeChild(typingRow);
-      var reply = buildReply(raw);
-      appendMessage('ase', reply.text);
-      updateDiagnostics(reply);
-    }, delay);
+    if (useAI) {
+      callRealAI(raw).then(function (reply) {
+        chatLog.removeChild(typingRow);
+        appendMessage('ase', reply.text);
+        updateDiagnostics(reply, reply.name === 'ai-error' ? 'local' : 'ai');
+      });
+    } else {
+      var delay = 350 + Math.random() * 400;
+      setTimeout(function () {
+        chatLog.removeChild(typingRow);
+        appendMessage('ase', localResult.text);
+        updateDiagnostics(localResult, 'local');
+        aiHistory.push({ role: 'user', content: raw });
+        aiHistory.push({ role: 'assistant', content: localResult.text });
+        if (aiHistory.length > 16) aiHistory = aiHistory.slice(aiHistory.length - 16);
+      }, delay);
+    }
   }
 
   sendBtn.addEventListener('click', handleSend);
@@ -669,7 +916,7 @@
   setInterval(tickClock, 1000);
   tickClock();
 
-  appendMessage('ase', 'Welcome. Core modules initialized. Ask me who I am, tell me your name, or type "help" to see what I can do.');
+  appendMessage('ase', 'Welcome. Core modules initialized and AI uplink is ready. Pick a language above, then ask me to generate or fix code — I specialize in Friday Night Funkin engines (Haxe, HScript, Lua/Polymod) but I can handle most languages.');
   userInput.focus();
 })();
 </script>
