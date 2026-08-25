@@ -450,6 +450,98 @@
     padding: 0 1.6rem 0.6rem;
   }
 
+  .avatar {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #06110d;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  }
+
+  .row-with-avatar {
+    display: flex;
+    gap: 0.6rem;
+    align-items: flex-start;
+  }
+
+  .row-with-avatar .bubble-col {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .msg-para {
+    white-space: pre-line;
+  }
+
+  .msg-para + .msg-para {
+    margin-top: 0.55rem;
+  }
+
+  #intro-card {
+    margin: 1.2rem 1.6rem 0.2rem;
+    padding: 1.1rem 1.2rem;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 12px;
+    display: flex;
+    gap: 0.9rem;
+  }
+
+  .intro-avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: #06110d;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    box-shadow: 0 0 18px rgba(87,224,184,0.25);
+  }
+
+  .intro-title {
+    font-weight: 600;
+    font-size: 1rem;
+  }
+
+  .intro-tagline {
+    font-size: 0.83rem;
+    color: var(--text-muted);
+    margin-top: 0.15rem;
+    line-height: 1.4;
+  }
+
+  .topic-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.7rem;
+  }
+
+  .topic-chip {
+    font-size: 0.76rem;
+    color: var(--text);
+    background: var(--accent-2-dim);
+    border: 1px solid rgba(139,127,214,0.3);
+    border-radius: 999px;
+    padding: 0.3rem 0.7rem;
+    cursor: pointer;
+    transition: filter 0.15s;
+  }
+
+  .topic-chip:hover { filter: brightness(1.15); }
+
   @media (max-width: 760px) {
     #core-panel {
       position: fixed;
@@ -505,7 +597,9 @@
     <div id="chat-header">
       <div style="display:flex; align-items:center; gap:0.8rem;">
         <button id="core-toggle">MODULES</button>
-        <h1>Ase<span>::Engine</span></h1>
+        <div>
+          <h1>Ase<span>::Engine</span></h1>
+        </div>
       </div>
       <div class="header-actions">
         <div class="status-pill">Online</div>
@@ -513,9 +607,25 @@
       </div>
     </div>
 
+    <div id="intro-card">
+      <div class="intro-avatar">As</div>
+      <div>
+        <div class="intro-title">Hey, I'm Ase</div>
+        <div class="intro-tagline">A conversational AI that's happy to talk about pretty much anything — food and recipes, animals, cities, people, everyday life — and also writes and fixes code, with particular depth in Friday Night Funkin modding.</div>
+        <div class="topic-row">
+          <button class="topic-chip" data-prompt="Give me a recipe for ">🍲 Recipe</button>
+          <button class="topic-chip" data-prompt="Tell me something interesting about ">🐾 Animals</button>
+          <button class="topic-chip" data-prompt="What should I know about visiting ">🏙️ Cities</button>
+          <button class="topic-chip" data-prompt="Let's just chat about ">💬 Small talk</button>
+          <button class="topic-chip" data-prompt="Write me code that ">💻 Code</button>
+        </div>
+      </div>
+    </div>
+
     <div id="chat-log"></div>
 
     <div id="lang-row">
+      <span class="core-label" style="align-self:center; margin:0 0.3rem 0 0;">Code context:</span>
       <button class="lang-chip active" data-lang="auto">Auto-detect</button>
       <button class="lang-chip" data-lang="haxe">Haxe / HaxeFlixel</button>
       <button class="lang-chip" data-lang="hscript">HScript</button>
@@ -526,10 +636,10 @@
       <button class="lang-chip" id="explain-toggle">Explain: Off</button>
     </div>
 
-    <div class="ai-note">Claude Sonnet handles real code generation and fixes in any language · local engine handles quick chat and session memory</div>
+    <div class="ai-note">Claude Sonnet powers real conversation on any topic — food, animals, cities, people, code and more · local engine handles quick chat and session memory</div>
 
     <div id="input-area">
-      <input type="text" id="user-input" placeholder="Ask a question, paste code to fix, or request a script..." autofocus>
+      <input type="text" id="user-input" placeholder="Ask me anything — recipes, animals, cities, code, or just say hi..." autofocus>
       <button id="mic-btn" title="Voice input">Mic</button>
       <button id="send-btn">Send</button>
     </div>
@@ -633,15 +743,15 @@
       name: 'identity',
       keywords: ['who are you', 'what are you', 'your name', 'quem e voce', 'quem é você', 'o que voce e', 'o que você é', 'qual seu nome'],
       responses: [
-        'I am Ase, a coding assistant that runs in your browser and generates or fixes code in pretty much any language, with deep focus on Friday Night Funkin modding.',
-        'Ase here — I write and fix code, explain concepts, and specialize in FNF engines, but I am not limited to that.'
+        'I am Ase — happy to chat about food, animals, cities, everyday life, or anything really, and I also write and fix code, with deep focus on Friday Night Funkin modding.',
+        'Ase here. Conversation, recipes, trivia, or code — whatever you need, I am up for it.'
       ]
     },
     {
       name: 'capabilities',
       keywords: ['what can you do', 'capabilities', 'features', 'help', 'o que voce faz', 'o que você faz', 'como voce funciona', 'ajuda'],
       responses: [
-        'I can chat, remember your name for this session, generate or fix code in any programming language, and I specialize in FNF (Haxe, HaxeFlixel, HScript, Lua/Polymod). Just describe what you need, or paste code to fix.'
+        'I can just chat, talk through recipes, animals, cities, everyday stuff, and I also generate or fix code in any language, with deep FNF knowledge (Haxe, HaxeFlixel, HScript, Lua/Polymod). Try the topic chips above or just tell me what is on your mind.'
       ]
     },
     {
@@ -760,14 +870,14 @@
       ? ('The user is writing in ' + humanLanguageNames[context.detectedLanguage] + '; respond in that language unless they clearly switch to another one.')
       : 'Detect the user\'s natural language from their message and respond in that same language.';
     var explainPart = context.explainMode
-      ? 'Explain mode is on: add brief, non-obvious inline comments in the code to teach what each part does, and follow the code block with a short plain-language walkthrough.'
-      : 'Explain mode is off: do not include comments in code, keep any explanation outside the code block brief.';
-    return 'You are Ase, a highly capable coding assistant embedded in a web app. You write, fix, refactor, and explain code fluently in any programming language the user needs: Haxe, HScript, Lua, Python, JavaScript, TypeScript, C++, C#, Java, Kotlin, Swift, Rust, Go, PHP, Ruby, SQL, shell, and anything else asked for. ' +
-      'You have particular depth in Friday Night Funkin modding and ports: HaxeFlixel, OpenFL, Lime, Polymod, and engines like Psych Engine, Kade Engine, Codename Engine, V-Slice and the base game — apply that expertise automatically whenever the context looks FNF-related, without needing to be told explicitly. ' +
-      'Read the user\'s intent carefully, including implied context from earlier turns in this conversation. If a request is genuinely ambiguous in a way that would change the code you write, ask one short clarifying question instead of guessing; otherwise make a reasonable assumption and proceed. ' +
-      'When producing code, output complete, correct, runnable code in a fenced block tagged with the specific language, chosen automatically based on the request or the target engine. Never use trace() calls for debugging. ' +
+      ? 'Explain mode is on: when writing code, add brief, non-obvious inline comments to teach what each part does, and follow the code block with a short plain-language walkthrough.'
+      : 'Explain mode is off: when writing code, do not include comments, keep any explanation outside the code block brief.';
+    return 'You are Ase, a warm and genuinely curious conversational AI. You are happy to talk about anything: everyday conversation, food and recipes, animals, cities and travel, people and history, or whatever the user brings up. Be personable and specific rather than generic — share real detail, a concrete tip, or an interesting angle, the way a knowledgeable friend would, not a dry encyclopedia entry. Match the user\'s energy: brief for small talk, thorough when they want depth. ' +
+      'You are also a highly capable coding assistant with fluency in any programming language: Haxe, HScript, Lua, Python, JavaScript, TypeScript, C++, C#, Java, Kotlin, Swift, Rust, Go, PHP, Ruby, SQL, shell, and more, with particular depth in Friday Night Funkin modding across HaxeFlixel, OpenFL, Lime, Polymod, and engines like Psych Engine, Kade Engine, Codename Engine, V-Slice and the base game — apply that expertise automatically whenever the context looks FNF-related. ' +
+      'Read the user\'s intent carefully, including implied context from earlier turns. If a request is genuinely ambiguous in a way that matters, ask one short clarifying question instead of guessing; otherwise make a reasonable assumption and proceed. ' +
+      'When producing code, output complete, correct, runnable code in a fenced block tagged with the specific language. Never use trace() calls for debugging. ' +
       explainPart + ' ' +
-      'Current requested language/engine hint from the UI: ' + langHint + ', but override it if the user clearly asks for something else. ' +
+      'If the user is asking for code, the requested language/engine hint from the UI is: ' + langHint + ', but override it if they clearly ask for something else. ' +
       humanLangPart + ' ' + namePart;
   }
 
@@ -826,20 +936,25 @@
     return hh + ':' + mm;
   }
 
+  function renderTextSegment(bubble, segment) {
+    var paragraphs = segment.split(/\n{2,}/);
+    paragraphs.forEach(function (para) {
+      if (!para.trim()) return;
+      var p = document.createElement('div');
+      p.className = 'msg-para';
+      p.textContent = para.trim();
+      bubble.appendChild(p);
+    });
+  }
+
   function renderIntoBubble(bubble, text) {
     var pattern = /```(\w+)?\n?([\s\S]*?)```/g;
     var lastIndex = 0;
     var match;
-    var found = false;
 
     while ((match = pattern.exec(text)) !== null) {
-      found = true;
       var before = text.slice(lastIndex, match.index);
-      if (before.trim()) {
-        var p = document.createElement('div');
-        p.innerText = before.trim();
-        bubble.appendChild(p);
-      }
+      if (before.trim()) renderTextSegment(bubble, before);
 
       var lang = match[1] || 'code';
       var codeText = match[2].replace(/\n$/, '');
@@ -878,13 +993,12 @@
     }
 
     var rest = text.slice(lastIndex);
-    if (!found) {
-      bubble.innerText = text;
-    } else if (rest.trim()) {
-      var tail = document.createElement('div');
-      tail.innerText = rest.trim();
-      bubble.appendChild(tail);
-    }
+    if (rest.trim()) renderTextSegment(bubble, rest);
+  }
+
+  function avatarLabel(sender) {
+    if (sender === 'ase') return 'As';
+    return context.userName ? context.userName.slice(0, 2).toUpperCase() : 'You'.slice(0, 2).toUpperCase();
   }
 
   function appendMessage(sender, text) {
@@ -899,8 +1013,27 @@
     bubble.className = 'bubble';
     renderIntoBubble(bubble, text);
 
-    row.appendChild(meta);
-    row.appendChild(bubble);
+    if (sender === 'ase') {
+      var inner = document.createElement('div');
+      inner.className = 'row-with-avatar';
+
+      var avatar = document.createElement('div');
+      avatar.className = 'avatar';
+      avatar.innerText = avatarLabel(sender);
+
+      var col = document.createElement('div');
+      col.className = 'bubble-col';
+      col.appendChild(meta);
+      col.appendChild(bubble);
+
+      inner.appendChild(avatar);
+      inner.appendChild(col);
+      row.appendChild(inner);
+    } else {
+      row.appendChild(meta);
+      row.appendChild(bubble);
+    }
+
     chatLog.appendChild(row);
     chatLog.scrollTop = chatLog.scrollHeight;
     return row;
@@ -909,10 +1042,21 @@
   function showTyping() {
     var row = document.createElement('div');
     row.className = 'row ase';
+
+    var inner = document.createElement('div');
+    inner.className = 'row-with-avatar';
+
+    var avatar = document.createElement('div');
+    avatar.className = 'avatar';
+    avatar.innerText = 'As';
+
     var bubble = document.createElement('div');
     bubble.className = 'bubble typing-dots';
     bubble.innerHTML = '<span></span><span></span><span></span>';
-    row.appendChild(bubble);
+
+    inner.appendChild(avatar);
+    inner.appendChild(bubble);
+    row.appendChild(inner);
     chatLog.appendChild(row);
     chatLog.scrollTop = chatLog.scrollHeight;
     return row;
@@ -984,6 +1128,16 @@
     appendMessage('ase', 'Log cleared. Ready when you are.');
   });
 
+  var topicChips = document.querySelectorAll('.topic-chip');
+  topicChips.forEach(function (chip) {
+    chip.addEventListener('click', function () {
+      var starter = chip.getAttribute('data-prompt');
+      userInput.value = starter;
+      userInput.focus();
+      userInput.setSelectionRange(starter.length, starter.length);
+    });
+  });
+
   coreToggle.addEventListener('click', function () {
     corePanel.classList.toggle('open');
   });
@@ -1042,7 +1196,7 @@
   setInterval(tickClock, 1000);
   tickClock();
 
-  appendMessage('ase', 'Welcome. Core modules initialized and AI uplink is ready. Pick a language above, then ask me to generate or fix code — I specialize in Friday Night Funkin engines (Haxe, HScript, Lua/Polymod) but I can handle most languages.');
+  appendMessage('ase', 'Pick a topic above or just type — I am all ears.');
   userInput.focus();
 })();
 </script>
