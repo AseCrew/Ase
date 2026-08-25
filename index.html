@@ -4,13 +4,71 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ase</title>
+  <script src="https://unpkg.com/brain.js"></script>
 </head>
 <body>
 
   <div id="app">
     <h1>Ase</h1>
+    <div id="chat-log"></div>
+    <div>
+      <input type="text" id="user-input" placeholder="Type a message...">
+      <button id="send-btn">Send</button>
+    </div>
   </div>
 
-  <script type="module" src="source/Main.js"></script>
+  <script>
+    const net = new brain.NeuralNetwork();
+
+    net.train([
+      { input: "hello", output: { greeting: 1 } },
+      { input: "hi", output: { greeting: 1 } },
+      { input: "bye", output: { farewell: 1 } },
+      { input: "goodbye", output: { farewell: 1 } }
+    ]);
+
+    const responses = {
+      greeting: "Hello! How can I help you today?",
+      farewell: "Goodbye! Have a great day!"
+    };
+
+    const chatLog = document.getElementById("chat-log");
+    const userInput = document.getElementById("user-input");
+    const sendBtn = document.getElementById("send-btn");
+
+    function appendMessage(sender, text) {
+      const msg = document.createElement("div");
+      msg.innerText = `${sender}: ${text}`;
+      chatLog.appendChild(msg);
+    }
+
+    function sendMessage() {
+      const text = userInput.value.trim().toLowerCase();
+      if (!text) return;
+
+      appendMessage("User", userInput.value);
+      userInput.value = "";
+
+      const result = net.run(text);
+      let highestMatch = "greeting";
+      let highestScore = 0;
+
+      for (let key in result) {
+        if (result[key] > highestScore) {
+          highestScore = result[key];
+          highestMatch = key;
+        }
+      }
+
+      const reply = highestScore > 0.5 ? responses[highestMatch] : "I do not understand.";
+      setTimeout(() => appendMessage("Ase", reply), 300);
+    }
+
+    sendBtn.addEventListener("click", sendMessage);
+    userInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") sendMessage();
+    });
+  </script>
+
 </body>
 </html>
