@@ -326,6 +326,36 @@
   #send-btn:hover { filter: brightness(1.08); }
   #send-btn:active { transform: translateY(1px); }
 
+  #mic-btn {
+    padding: 0 1rem;
+    background: var(--panel);
+    color: var(--text-muted);
+    border: 1px solid var(--panel-border);
+    border-radius: var(--radius);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+  }
+
+  #mic-btn:hover { color: var(--text); border-color: var(--text-dim); }
+
+  #mic-btn.listening {
+    color: #06110d;
+    background: var(--warn);
+    border-color: var(--warn);
+    animation: pulse 1.2s ease-in-out infinite;
+  }
+
+  #mic-btn.unsupported { opacity: 0.4; cursor: not-allowed; }
+
+  #explain-toggle.active {
+    color: #06110d;
+    background: var(--accent-2);
+    border-color: var(--accent-2);
+    font-weight: 600;
+  }
+
   #core-toggle {
     display: none;
     font-family: var(--font-mono);
@@ -467,6 +497,7 @@
       <div class="stat-line"><span>Known identity</span><span id="stat-identity">unset</span></div>
       <div class="stat-line"><span>Last intent</span><span id="stat-intent">none</span></div>
       <div class="stat-line"><span>Detected code lang</span><span id="stat-codelang">none</span></div>
+      <div class="stat-line"><span>Detected speech lang</span><span id="stat-humanlang">unknown</span></div>
     </div>
   </aside>
 
@@ -492,12 +523,14 @@
       <button class="lang-chip" data-lang="cpp">C++</button>
       <button class="lang-chip" data-lang="python">Python</button>
       <button class="lang-chip" data-lang="javascript">JavaScript</button>
+      <button class="lang-chip" id="explain-toggle">Explain: Off</button>
     </div>
 
     <div class="ai-note">Claude Sonnet handles real code generation and fixes in any language · local engine handles quick chat and session memory</div>
 
     <div id="input-area">
       <input type="text" id="user-input" placeholder="Ask a question, paste code to fix, or request a script..." autofocus>
+      <button id="mic-btn" title="Voice input">Mic</button>
       <button id="send-btn">Send</button>
     </div>
   </main>
@@ -517,12 +550,15 @@
   var statIdentity = document.getElementById('stat-identity');
   var statIntent = document.getElementById('stat-intent');
   var statCodeLang = document.getElementById('stat-codelang');
+  var statHumanLang = document.getElementById('stat-humanlang');
+  var explainToggle = document.getElementById('explain-toggle');
+  var micBtn = document.getElementById('mic-btn');
   var uptimeClock = document.getElementById('uptime-clock');
   var aiDot = document.getElementById('ai-dot');
   var langChips = document.querySelectorAll('.lang-chip');
 
   var startTime = Date.now();
-  var context = { userName: null, lastIntent: null, exchanges: 0, language: 'auto' };
+  var context = { userName: null, lastIntent: null, exchanges: 0, language: 'auto', explainMode: false, detectedLanguage: 'unknown' };
   var aiHistory = [];
 
   var languageLabels = {
@@ -541,6 +577,37 @@
       chip.classList.add('active');
       context.language = chip.getAttribute('data-lang');
     });
+  });
+
+  var humanLanguageNames = { pt: 'Portuguese', en: 'English', es: 'Spanish', unknown: 'unspecified' };
+  var speechLocales = { pt: 'pt-BR', en: 'en-US', es: 'es-ES', unknown: navigator.language || 'en-US' };
+
+  var languageMarkers = {
+    pt: ['de', 'que', 'não', 'para', 'você', 'está', 'com', 'uma', 'isso', 'código', 'gerar', 'função', 'como', 'faça', 'quero'],
+    en: ['the', 'is', 'and', 'you', 'are', 'with', 'that', 'this', 'code', 'generate', 'function', 'how', 'make', 'want'],
+    es: ['el', 'la', 'que', 'de', 'estás', 'con', 'esto', 'código', 'generar', 'función', 'cómo', 'quiero', 'para']
+  };
+
+  function detectHumanLanguage(text) {
+    var clean = ' ' + text.toLowerCase().replace(/[^a-zà-úñ\s]/gi, ' ') + ' ';
+    var scores = { pt: 0, en: 0, es: 0 };
+    Object.keys(languageMarkers).forEach(function (lang) {
+      languageMarkers[lang].forEach(function (word) {
+        if (clean.indexOf(' ' + word + ' ') !== -1) scores[lang] += 1;
+      });
+    });
+    var best = 'unknown';
+    var bestScore = 0;
+    Object.keys(scores).forEach(function (lang) {
+      if (scores[lang] > bestScore) { bestScore = scores[lang]; best = lang; }
+    });
+    return bestScore > 0 ? best : context.detectedLanguage;
+  }
+
+  explainToggle.addEventListener('click', function () {
+    context.explainMode = !context.explainMode;
+    explainToggle.classList.toggle('active', context.explainMode);
+    explainToggle.innerText = 'Explain: ' + (context.explainMode ? 'On' : 'Off');
   });
 
   var intents = [
@@ -689,12 +756,19 @@
   function buildSystemPrompt() {
     var langHint = languageLabels[context.language] || languageLabels.auto;
     var namePart = context.userName ? ('The user\'s name is ' + context.userName + '.') : '';
+    var humanLangPart = context.detectedLanguage !== 'unknown'
+      ? ('The user is writing in ' + humanLanguageNames[context.detectedLanguage] + '; respond in that language unless they clearly switch to another one.')
+      : 'Detect the user\'s natural language from their message and respond in that same language.';
+    var explainPart = context.explainMode
+      ? 'Explain mode is on: add brief, non-obvious inline comments in the code to teach what each part does, and follow the code block with a short plain-language walkthrough.'
+      : 'Explain mode is off: do not include comments in code, keep any explanation outside the code block brief.';
     return 'You are Ase, a highly capable coding assistant embedded in a web app. You write, fix, refactor, and explain code fluently in any programming language the user needs: Haxe, HScript, Lua, Python, JavaScript, TypeScript, C++, C#, Java, Kotlin, Swift, Rust, Go, PHP, Ruby, SQL, shell, and anything else asked for. ' +
       'You have particular depth in Friday Night Funkin modding and ports: HaxeFlixel, OpenFL, Lime, Polymod, and engines like Psych Engine, Kade Engine, Codename Engine, V-Slice and the base game — apply that expertise automatically whenever the context looks FNF-related, without needing to be told explicitly. ' +
       'Read the user\'s intent carefully, including implied context from earlier turns in this conversation. If a request is genuinely ambiguous in a way that would change the code you write, ask one short clarifying question instead of guessing; otherwise make a reasonable assumption and proceed. ' +
-      'When producing code, output complete, correct, runnable code in a fenced block tagged with the specific language, chosen automatically based on the request or the target engine. Do not include comments in code unless explicitly asked. Never use trace() calls for debugging. Keep any explanation outside the code block short and to the point. ' +
+      'When producing code, output complete, correct, runnable code in a fenced block tagged with the specific language, chosen automatically based on the request or the target engine. Never use trace() calls for debugging. ' +
+      explainPart + ' ' +
       'Current requested language/engine hint from the UI: ' + langHint + ', but override it if the user clearly asks for something else. ' +
-      'Always reply in the same language the user is writing in. ' + namePart;
+      humanLangPart + ' ' + namePart;
   }
 
   function callRealAI(raw) {
@@ -865,6 +939,9 @@
     var raw = userInput.value.trim();
     if (!raw) return;
 
+    context.detectedLanguage = detectHumanLanguage(raw);
+    statHumanLang.innerText = humanLanguageNames[context.detectedLanguage];
+
     appendMessage('user', raw);
     userInput.value = '';
 
@@ -910,6 +987,49 @@
   coreToggle.addEventListener('click', function () {
     corePanel.classList.toggle('open');
   });
+
+  var SpeechEngine = window.SpeechRecognition || window.webkitSpeechRecognition;
+  var recognizer = null;
+  var isListening = false;
+
+  if (SpeechEngine) {
+    recognizer = new SpeechEngine();
+    recognizer.interimResults = false;
+    recognizer.maxAlternatives = 1;
+
+    recognizer.onresult = function (event) {
+      var transcript = event.results[0][0].transcript;
+      userInput.value = transcript;
+      handleSend();
+    };
+
+    recognizer.onend = function () {
+      isListening = false;
+      micBtn.classList.remove('listening');
+    };
+
+    recognizer.onerror = function () {
+      isListening = false;
+      micBtn.classList.remove('listening');
+    };
+
+    micBtn.addEventListener('click', function () {
+      if (isListening) {
+        recognizer.stop();
+        return;
+      }
+      recognizer.lang = speechLocales[context.detectedLanguage] || navigator.language || 'en-US';
+      isListening = true;
+      micBtn.classList.add('listening');
+      recognizer.start();
+    });
+  } else {
+    micBtn.classList.add('unsupported');
+    micBtn.title = 'Voice input is not supported in this browser';
+    micBtn.addEventListener('click', function () {
+      appendMessage('ase', 'Voice input is not supported in this browser. Try a Chromium-based browser instead.');
+    });
+  }
 
   function tickClock() {
     var elapsed = Math.floor((Date.now() - startTime) / 1000);
